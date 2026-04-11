@@ -2,18 +2,6 @@
 modules/fence.py
 ================
 VirtualFence — interactive polygon zone drawn by the user with the mouse.
-
-State machine
-─────────────
-  idle      → LBUTTONDOWN          → add point, start drawing
-  drawing   → MOUSEMOVE            → update current mouse position for ghost line
-  drawing   → LBUTTONDOWN          → add more points
-  drawing   → Enter (main.py)      → finalized
-  any       → clear()              → full reset
-
-Fence coordinates are stored as a list of points [[x, y], ...].
-Intrusion is detected by checking if the center point of a bounding box
-lies inside the polygon using cv2.pointPolygonTest.
 """
 
 from __future__ import annotations
@@ -41,12 +29,12 @@ class VirtualFence:
         if event == cv2.EVENT_LBUTTONDOWN:
             self.is_drawing = True
             self.points.append([x, y])
-            print(f"[VirtualFence] Point added: ({x}, {y}) | Total points: {len(self.points)}")
+            print(f"[VirtualFence] Point REGISTERED: ({x}, {y}) | Total: {len(self.points)}")
 
         elif event == cv2.EVENT_RBUTTONDOWN:
             if self.points:
                 p = self.points.pop()
-                print(f"[VirtualFence] Removed last point: {p}")
+                print(f"[VirtualFence] Point UNDONE: {p}")
                 if not self.points:
                     self.is_drawing = False
 
@@ -56,9 +44,6 @@ class VirtualFence:
         self,
         detections: list[tuple[int, int, int, int, float]],
     ) -> tuple[list, list]:
-        """
-        Split detections into intruders (center inside polygon) and safe.
-        """
         if not self.enabled or len(self.points) < 3:
             return [], list(detections)
 
@@ -70,8 +55,6 @@ class VirtualFence:
             x1, y1, x2, y2, _ = det
             cx = (x1 + x2) // 2
             cy = (y1 + y2) // 2
-            
-            # pointPolygonTest returns positive if inside, negative if outside, 0 on edge
             dist = cv2.pointPolygonTest(points_np, (float(cx), float(cy)), False)
             if dist >= 0:
                 intruders.append(det)
@@ -79,8 +62,6 @@ class VirtualFence:
                 safe.append(det)
 
         return intruders, safe
-
-    # ── Controls ──────────────────────────────────────────────────────────────
 
     def toggle(self) -> None:
         self.enabled = not self.enabled
@@ -92,13 +73,11 @@ class VirtualFence:
         self.mouse_pos   = None
 
     def finalize(self) -> bool:
-        """Called when the user finishes drawing (e.g. presses Enter)."""
         if len(self.points) < 3:
             print("[VirtualFence] Need at least 3 points to form a zone.")
             return False
-        
         self.is_drawing = False
-        print(f"[VirtualFence] Polygon finalized with {len(self.points)} points.")
+        print(f"[VirtualFence] Finalized with {len(self.points)} points.")
         return True
 
     def has_fence(self) -> bool:
@@ -117,19 +96,15 @@ class VirtualFence:
         try:
             with open(path, "r") as f:
                 data = json.load(f)
-            
-            # Handle legacy 'rect' or new 'points'
             raw_points = data.get("points")
             if raw_points:
                 self.points = raw_points
             else:
-                # Migration from old rect [x1, y1, x2, y2]
                 rect = data.get("rect")
                 if rect:
                     x1, y1, x2, y2 = rect
                     self.points = [[x1, y1], [x2, y1], [x2, y2], [x1, y2]]
-            
             self.enabled = data.get("enabled", True)
-            print(f"[VirtualFence] Loaded fence with {len(self.points)} points.")
+            print(f"[VirtualFence] Loaded {len(self.points)} points.")
         except Exception as e:
             print(f"[VirtualFence] Load failed: {e}")

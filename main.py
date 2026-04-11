@@ -2,18 +2,6 @@
 Virtual Fencing — Real-Time Personnel Detection System v2
 =========================================================
 Entry point: integrates all modules.
-
-Controls:
-  F          → Enter draw mode: click individual points on the video to form a polygon.
-  ENTER      → Finalize the fence (must have at least 3 points).
-  C          → Clear / remove the fence entirely.
-  Q / ESC    → Quit.
-
-Alerts fire automatically when a person enters the fence zone:
-  • Console log
-  • Snapshot saved to snapshots/
-  • Email with attached image (config.json → email.enabled = true)
-  • Hardware buzzer hook (see events.py → HardwareAlertHandler)
 """
 
 import cv2
@@ -50,7 +38,6 @@ def main():
     os.makedirs(snap_dir, exist_ok=True)
     os.makedirs("logs", exist_ok=True)
 
-    # ── modules ───────────────────────────────────────────────────────────────
     camera   = ThreadedCamera(
         source = cam_cfg["source"],
         width  = cam_cfg["width"],
@@ -71,19 +58,17 @@ def main():
     )
     viz = Visualizer(disp_cfg)
 
-    # ── restore saved fence ───────────────────────────────────────────────────
     fence.load(FENCE_SAVE_PATH)
 
     if not camera.open():
         print("[FATAL] Cannot open video source.")
         sys.exit(1)
 
-    # ── window ────────────────────────────────────────────────────────────────
-    WIN = "Virtual Fencing — Industrial Safety System"
+    # Simplified Window Name for reliability
+    WIN = "Virtual Fencing"
     cv2.namedWindow(WIN, cv2.WINDOW_NORMAL)
     cv2.resizeWindow(WIN, cam_cfg["width"], cam_cfg["height"])
 
-    # draw_mode flag — mouse only draws when this is True
     draw_mode = [False]
 
     def _mouse(event, x, y, flags, param):
@@ -93,19 +78,8 @@ def main():
 
     cv2.setMouseCallback(WIN, _mouse)
 
-    print("\n╔══════════════════════════════════════════════════════╗")
-    print("║   Virtual Fencing — Automated Detection System v2   ║")
-    print("╠══════════════════════════════════════════════════════╣")
-    print("║  [F]  Draw fence  (Click corner points)             ║")
-    print("║  [Enter] Finish drawing                             ║")
-    print("║  [C]  Clear fence                                   ║")
-    print("║  [Q / ESC]  Quit                                    ║")
-    print("╚══════════════════════════════════════════════════════╝\n")
-
-    if fence.has_fence():
-        print(f"[INFO] Restored fence from disk with {len(fence.points)} points.")
-    else:
-        print("[INFO] No fence yet. Press F then click on the video window to set points.")
+    print("\n[INFO] System Running...")
+    print("  [F] Draw zone   [C] Clear   [Q] Quit")
 
     frame_idx   = 0
     last_dets   = []
@@ -117,12 +91,10 @@ def main():
             continue
 
         frame_idx += 1
-
         if frame_idx % INFER_EVERY == 0:
             last_dets = detector.detect(frame)
 
         detections = last_dets
-
         intruders, safe_persons = fence.check_intrusions(detections)
         status = decision.evaluate(intruders)
 
@@ -141,8 +113,8 @@ def main():
             draw_mode    = draw_mode[0],
         )
 
-        # Show point drawing preview
-        if draw_mode[0] and fence.is_drawing:
+        # Show drawing preview immediately when draw_mode is ON
+        if draw_mode[0]:
             viz.draw_fence_preview(display_frame, fence)
 
         cv2.imshow(WIN, display_frame)
@@ -150,25 +122,23 @@ def main():
         key = cv2.waitKey(1) & 0xFF
 
         if key in (ord("q"), 27):
-            print("\n[INFO] Quit requested.")
             break
 
         elif key == ord("f"):
             if draw_mode[0]:
                 draw_mode[0] = False
-                fence.clear()
-                print("[INFO] Draw mode CANCELLED.")
+                print("[INFO] Draw mode OFF.")
             else:
                 draw_mode[0] = True
                 fence.clear()
-                print("[INFO] Draw mode ON — click points then press ENTER to finish.")
+                print("[INFO] Draw mode ON — Click points then press ENTER.")
 
-        elif key in (13, ord("\r")):  # Enter key
-            if draw_mode[0] and fence.is_drawing:
+        elif key in (13, ord("\r"), 10):  # Support different Enter keys
+            if draw_mode[0]:
                 if fence.finalize():
                     fence.save(FENCE_SAVE_PATH)
                     draw_mode[0] = False
-                    print("[INFO] Fence finalized and saved.")
+                    print("[INFO] Fence saved.")
 
         elif key == ord("c"):
             fence.clear()
@@ -179,7 +149,7 @@ def main():
 
     camera.release()
     cv2.destroyAllWindows()
-    print("[INFO] System stopped.")
+    print("[INFO] Stopped.")
 
 
 if __name__ == "__main__":
