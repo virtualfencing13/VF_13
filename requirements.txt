@@ -1,0 +1,21 @@
+# Virtual Fencing v2 — dependencies
+# Install: pip install -r requirements.txt
+
+# ── Core AI / detection ────────────────────────────────────────────────────
+ultralytics         # YOLO11n + export utilities
+openvino      # OpenVINO runtime (CPU optimised inference)
+
+# ── Computer vision ────────────────────────────────────────────────────────
+opencv-python      # video capture, drawing, display
+
+# ── Scientific (pulled by ultralytics, pinned for stability) ───────────────
+numpy
+torch              # CPU build; GPU: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+# ── Standard library (no install needed, listed for reference) ────────────
+# smtplib   — email sending
+# threading — background workers
+# queue     — ThreadedCamera buffer
+# json      — config loading
+# datetime  — timestamps
+# os        — path handling

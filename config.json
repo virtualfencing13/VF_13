@@ -1,0 +1,60 @@
+{
+  "camera": {
+    "camera_id": "CAM_01",
+    "source": "video.mp4",
+    "width": 640,
+    "height": 480,
+    "fps_limit": 30
+  },
+  "detector": {
+    "model_path": "yolo11n_int8_openvino_model/",
+    "confidence": 0.45,
+    "device": "cpu"
+  },
+  "display": {
+    "bbox_color_safe": [
+      0,
+      220,
+      90
+    ],
+    "bbox_color_intruder": [
+      0,
+      50,
+      255
+    ],
+    "fence_color_safe": [
+      0,
+      220,
+      90
+    ],
+    "fence_color_unsafe": [
+      0,
+      50,
+      255
+    ],
+    "fence_thickness": 2,
+    "bbox_thickness": 2,
+    "font_scale": 0.58,
+    "show_center_dot": true,
+    "show_confidence": true,
+    "show_fps": true
+  },
+  "alerts": {
+    "console": true,
+    "cooldown_seconds": 5.0,
+    "snapshot_dir": "snapshots",
+    "save_snapshot": true
+  },
+  "email": {
+    "enabled": true,
+    "smtp_host": "smtp.gmail.com",
+    "smtp_port": 587,
+    "sender_email": "revadharshini25@gmail.com",
+    "sender_password": "wzgq bjeq wltx veyi",
+    "recipients": [
+      "dharshinikavin1239@gmail.com"
+    ],
+    "cooldown_seconds": 30,
+    "subject_prefix": "[INTRUSION ALERT]"
+  }
+}

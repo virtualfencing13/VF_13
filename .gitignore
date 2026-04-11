@@ -1,0 +1,23 @@
+# Virtual Fencing - Git Ignore
+
+# Environment
+venv/
+.venv/
+env/
+*.pyc
+__pycache__/
+
+# Project Data
+logs/
+snapshots/
+*.mp4
+!video.mp4  # Keep the main video for demo
+fence.json
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
