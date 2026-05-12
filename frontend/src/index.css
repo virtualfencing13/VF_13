@@ -1,0 +1,147 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* ── Cyber-Industrial Design System ────────────────────────────── */
+  --green: #00ff41;
+  --bg: #060a0a;
+  --bg-card: #0d1117;
+  --bg-panel: #161b22;
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-bright: rgba(0, 255, 65, 0.2);
+  
+  --color-green: var(--green);
+  --color-red: #ff003c;
+  --color-amber: #ffcc00;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #8b949e;
+  --color-text-muted: #484f58;
+
+/* Typography */
+  --font-display: 'Roboto', 'Calibri', sans-serif;
+  --font-mono: 'Roboto', 'Calibri', sans-serif;
+  --font-ui: 'Roboto', 'Calibri', sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-[#060a0a] text-white font-sans antialiased overflow-hidden;
+  }
+}
+
+@layer components {
+  /* ── Sidebar & Layout ───────────────────────────────────────────── */
+  .sidebar-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-black uppercase tracking-widest transition-all duration-200 cursor-pointer font-[var(--font-display)];
+  }
+  .sidebar-item-active {
+    @apply bg-[var(--green)] text-black shadow-[0_0_20px_rgba(0,255,65,0.3)] border border-[var(--green)];
+  }
+  .sidebar-item-inactive {
+    @apply text-[#8b949e] hover:bg-white/5 hover:text-white border border-transparent;
+  }
+
+  /* ── Cards & Panels ─────────────────────────────────────────────── */
+  .industrial-card {
+    @apply bg-[#0d1117] border border-white/5 rounded-2xl shadow-2xl;
+  }
+  
+  .panel-header {
+    @apply flex items-center justify-between px-6 py-4 border-b border-white/5;
+  }
+
+  /* ── Buttons ─────────────────────────────────────────────────────── */
+  .btn-action {
+    @apply flex items-center gap-2 px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 border border-white/10 font-[var(--font-display)];
+  }
+  .btn-green { @apply bg-[var(--green)] text-black hover:bg-[#2eff88] shadow-[0_0_15px_rgba(0,255,65,0.2)]; }
+  .btn-outline { @apply bg-transparent text-white hover:bg-white/5; }
+
+  /* ── Status Indicators ───────────────────────────────────────────── */
+  .status-box {
+    @apply p-6 rounded-2xl border-2 flex items-center gap-5 transition-all duration-500 font-[var(--font-display)];
+  }
+  .status-danger {
+    @apply border-[var(--color-red)] text-[var(--color-red)] shadow-[0_0_30px_rgba(255,0,60,0.15)];
+    background-color: rgba(255, 0, 60, 0.1);
+  }
+  .status-safe {
+    @apply text-[var(--green)];
+    border-color: rgba(0, 255, 65, 0.3);
+    background-color: rgba(0, 255, 65, 0.05);
+  }
+
+  /* ── Input & Controls ────────────────────────────────────────────── */
+  .toggle-switch {
+    @apply relative w-10 h-5 bg-[#161b22] rounded-full transition-colors cursor-pointer border border-white/10;
+  }
+  .toggle-switch-on { @apply bg-[var(--green)]; }
+  .toggle-thumb {
+    @apply absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform duration-200;
+  }
+  .toggle-switch-on .toggle-thumb { @apply translate-x-5 bg-black; }
+}
+
+/* ── Custom Utilities ─────────────────────────────────────────────── */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 10px;
+}
+
+.text-gradient {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-white to-[#8b949e];
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(.8); opacity: 0.5; }
+  100% { transform: scale(1.2); opacity: 0; }
+}
+.pulse-ring {
+  animation: pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fadein {
+  animation: fade-in 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+.animate-shake {
+  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.input {
+  @apply bg-[#0d1117] border border-white/5 rounded-xl px-4 text-sm font-medium transition-all duration-200 outline-none;
+  @apply focus:border-[var(--green)] focus:bg-[#161b22];
+}
+
+.input-setup {
+  @apply w-full bg-white/5 border border-white/10 rounded-2xl h-14 px-6 text-white font-[var(--font-mono)] text-center outline-none focus:border-[var(--green)] transition-colors placeholder:text-[#484f58];
+}
+
+.btn-primary {
+  @apply bg-[var(--green)] text-black font-black uppercase tracking-widest transition-all duration-200;
+  @apply hover:bg-[#2eff88] hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:pointer-events-none font-[var(--font-display)];
+}
+
+.btn-secondary {
+  @apply bg-white/5 text-white border border-white/10 font-black uppercase tracking-widest transition-all duration-200;
+  @apply hover:bg-white/10 active:scale-95 disabled:opacity-50 font-[var(--font-display)];
+}
+
+.btn-danger {
+  @apply text-[var(--color-red)] font-black uppercase tracking-widest transition-all duration-200;
+  border: 1px solid rgba(255, 0, 60, 0.2);
+  background-color: rgba(255, 0, 60, 0.1);
+  @apply hover:bg-[var(--color-red)] hover:text-white active:scale-95 disabled:opacity-50 font-[var(--font-display)];
+}
