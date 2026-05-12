@@ -32,7 +32,17 @@ class Zone:
 
 class IntrusionDetector:
     def __init__(self, confidence: float = 0.5, alert_cooldown: int = 5):
-        self.model = YOLO("yolo11n.pt")
+        # Prefer OpenVINO model if it exists (for Raspberry Pi speed)
+        model_path = "yolo11n.pt"
+        openvino_path = Path(__file__).resolve().parents[1] / "yolo11n_openvino_model"
+        
+        if openvino_path.exists():
+            model_path = str(openvino_path)
+            print(f"🚀 AI: Using Optimized OpenVINO Model for High-FPS")
+        else:
+            print(f"📦 AI: Using Standard PyTorch Model")
+
+        self.model = YOLO(model_path)
         self.confidence = confidence
         self.alert_cooldown = alert_cooldown
         self.last_alert_time = 0

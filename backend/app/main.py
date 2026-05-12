@@ -28,6 +28,14 @@ from .config import settings
 from .detector import IntrusionDetector
 import requests
 
+# Raspberry Pi Buzzer Support (Safe Fallback)
+try:
+    from gpiozero import Buzzer
+    buzzer = Buzzer(17)
+except (ImportError, Exception):
+    buzzer = None
+    print("📢 INFO: Running in Laptop Mode (Hardware Buzzer disabled)")
+
 
 # Storage Paths
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -49,7 +57,7 @@ app.add_middleware(
 # Camera Configuration
 # The system now relies 100% on the Camera Registry (DB). 
 # Test cameras (cam_01, cam_02) have been decommissioned for production.
-camera_manager = CameraManager("0") # Initialize with placeholder, will be updated by DB
+camera_manager = CameraManager(settings.camera_source) 
 detector = IntrusionDetector(settings.confidence_threshold, settings.alert_cooldown_seconds)
 from app.alerts import Database, Alert, NotificationSettings, Camera, DATABASE_URL
 
@@ -502,9 +510,12 @@ def detection_loop() -> None:
             intruder_count = sum(1 for (box, conf) in detector.last_results if any(z.type == "danger" and z.contains((box[0]+box[2])/2, box[3], width, height) for z in detector.zones))
             threading.Thread(target=dispatch_alerts, args=(alerts, snapshot_path, intruder_count), daemon=True).start()
 
-        # 3. Restore Operations
+        # 3. Restore Operations & Buzzer Control
         if current_status == "safe":
             machine_status = "running"
+            if buzzer: buzzer.off()
+        elif current_status == "intrusion":
+            if buzzer: buzzer.on()
 
         # 4. Global Broadcast (Dashboard Sync)
         ws_data = {
