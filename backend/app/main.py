@@ -1931,6 +1931,8 @@ def update_camera(id: str, payload: dict, current_user: dict = Depends(get_curre
             cam.zone_type = payload.get("zone_type") or payload.get("zoneType")
         if "ai_enabled" in payload or "aiEnabled" in payload:
             cam.ai_enabled = payload.get("ai_enabled") if payload.get("ai_enabled") is not None else payload.get("aiEnabled")
+        if "ip_address" in payload or "ipAddress" in payload:
+            cam.ip_address = payload.get("ip_address") or payload.get("ipAddress")
 
         session.commit()
         session.refresh(cam)

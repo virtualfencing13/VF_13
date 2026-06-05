@@ -51,7 +51,8 @@ class CameraWorker:
         alert_cooldown: int = 5,
         shared_model = None,
         db_instance: Database = None,
-        zones_data: Optional[str] = None
+        zones_data: Optional[str] = None,
+        ip_address: Optional[str] = None
     ) -> None:
         self.camera_id = camera_id or "unknown_node"
         self.owner_id = owner_id or "unknown_owner"
@@ -61,6 +62,7 @@ class CameraWorker:
         self.zone_type = zone_type
         self.confidence = confidence
         self.alert_cooldown = alert_cooldown
+        self.ip_address = ip_address
         
         self.db = db_instance
         self.detector = IntrusionDetector(
@@ -99,6 +101,22 @@ class CameraWorker:
         self.person_count = 0
         self.latency = 0.0
         self._logged_connection_error = False
+
+    def _send_esp32_command(self, esp32_ip: str, state: str):
+        """Sends a non-blocking wireless trigger to a remote ESP32 machine switch."""
+        if not esp32_ip:
+            return
+        
+        def http_request():
+            try:
+                url = f"http://{esp32_ip}/{state}"
+                response = requests.get(url, timeout=1.0)
+                if response.status_code == 200:
+                    print(f"📡 Wireless command [{state.upper()}] successfully sent to ESP32: {esp32_ip}")
+            except Exception as e:
+                print(f"⚠️ Failed to reach ESP32 safety node at {esp32_ip}: {e}")
+
+        threading.Thread(target=http_request, daemon=True).start()
 
     def verify_connectivity(self) -> bool:
         """Helper to verify network connectivity of RTSP/IP source quickly."""
@@ -255,6 +273,13 @@ class CameraWorker:
                     self.fps = 0.0
                     self.person_count = 0
                     self.intrusion_active = False
+                
+                # Safe-fail: stop remote machine wirelessly if camera goes offline
+                if getattr(self, "_last_hardware_state", None) != True:
+                    self._last_hardware_state = True
+                    if self.ip_address:
+                        self._send_esp32_command(self.ip_address, "danger")
+                
                 time.sleep(0.033)
                 continue
 
@@ -281,6 +306,11 @@ class CameraWorker:
                             set_hardware_state(new_intrusion_state)
                         except Exception:
                             pass
+                        
+                        # Trigger wireless ESP32 safety node state transition
+                        if self.ip_address:
+                            state_cmd = "danger" if new_intrusion_state else "safe"
+                            self._send_esp32_command(self.ip_address, state_cmd)
                     
                     self.intrusion_active = new_intrusion_state
                     self.latency = self.detector.inference_time
@@ -525,7 +555,8 @@ class CameraManager:
                 confidence=confidence_val,
                 shared_model=self.shared_model,
                 db_instance=self.db,
-                zones_data=getattr(cam_db, 'zones_data', None)
+                zones_data=getattr(cam_db, 'zones_data', None),
+                ip_address=getattr(cam_db, 'ip_address', None)
             )
             # Carry location parameter
             worker.location = cam_db.location or "CCTV Node"

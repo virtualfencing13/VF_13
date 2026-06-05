@@ -23,7 +23,8 @@ export default function CamerasPage({ cameras = [], setCameras }) {
     password: '',
     location: '',
     zone_type: 'danger',
-    ai_enabled: true
+    ai_enabled: true,
+    ip_address: ''
   };
 
   const [newCam, setNewCam] = useState(defaultCam);
@@ -76,7 +77,8 @@ export default function CamerasPage({ cameras = [], setCameras }) {
       password: cam.password || '',
       location: cam.location || '',
       zone_type: cam.zone_type || 'danger',
-      ai_enabled: cam.ai_enabled !== undefined ? cam.ai_enabled : true
+      ai_enabled: cam.ai_enabled !== undefined ? cam.ai_enabled : true,
+      ip_address: cam.ip_address || ''
     });
     setIsEditing(true);
     setShowModal(true);
@@ -307,6 +309,20 @@ export default function CamerasPage({ cameras = [], setCameras }) {
                     placeholder={newCam.camera_type === 'webcam' ? '0' : 'rtsp://admin:secret@192.168.1.64:554/stream'}
                     value={newCam.rtsp_url}
                     onChange={e => setNewCam({...newCam, rtsp_url: e.target.value})}
+                  />
+                </div>
+
+                {/* ESP32 Controller IP Address */}
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-muted uppercase tracking-widest ml-1">
+                    ESP32 Controller IP (Optional - for wireless safety switch)
+                  </label>
+                  <input 
+                    type="text"
+                    className="w-full h-14 px-6 rounded-2xl bg-white/[0.03] border border-white/10 text-white font-mono focus:border-[var(--em)]/50 focus:bg-white/[0.05] outline-none transition-all text-sm"
+                    placeholder="192.168.55.101"
+                    value={newCam.ip_address || ''}
+                    onChange={e => setNewCam({...newCam, ip_address: e.target.value})}
                   />
                 </div>
 
