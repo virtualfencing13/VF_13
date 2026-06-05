@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.db
+*.log
+snapshots/
+test_db.py
+check_users.py
+reset_pw.py
+.git/
+.env

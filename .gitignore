@@ -1,56 +1,36 @@
-# IDEs and System Files
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
-*.log
-*.tmp
-*.bak
-
-# Backend (Python)
-backend/__pycache__/
-backend/*.py[cod]
-backend/*$py.class
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
 backend/.venv/
-backend/venv/
-backend/ENV/
-backend/env/
-backend/build/
-backend/dist/
-backend/eggs/
-backend/.eggs/
-backend/*.egg-info/
-backend/*.egg
+backend/snapshots/
+backend/storage/
+backend/storage/snapshots/
+backend/storage/*.db
+backend/*.db
+*.db
+
+# Environment variables
+.env
+.env.*
 backend/.env
 backend/.env.*
-!backend/.env.example
+frontend/.env
+frontend/.env.*
 
-# AI Models and Data (Large Files)
-backend/*.pt
-backend/*.pth
-backend/*.onnx
-backend/*.weights
-backend/*.h5
-!backend/yolo11n_openvino_model/
-backend/storage/
-backend/data/
-
-# Frontend (Node/React/Vite)
+# Node / Frontend
 frontend/node_modules/
 frontend/dist/
-frontend/build/
-frontend/out/
-frontend/.env
-frontend/.env.local
-frontend/.env.development.local
-frontend/.env.test.local
-frontend/.env.production.local
-frontend/npm-debug.log*
-frontend/yarn-debug.log*
-frontend/yarn-error.log*
-frontend/.eslintcache
-frontend/.next/
 
-# Docker
-.docker/
-docker-compose.override.yml
+# IDEs and OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# ML Models (heavy files, downloaded dynamically/manually)
+backend/yolo11n.pt
+backend/yolo11n.onnx

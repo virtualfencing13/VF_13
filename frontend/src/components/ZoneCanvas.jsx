@@ -1,17 +1,19 @@
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import { postZones, resetZones } from '../services/api';
 
 const toNorm = (p, w, h) => ({ x: p.x / w, y: p.y / h });
 const toPx   = (pts, w, h) => pts.map(p => ({ x: p.x * w, y: p.y * h }));
 
-export default function ZoneCanvas({ zones = [], setZones, status, activeCameraId, drawing, setDrawing }) {
+export default function ZoneCanvas({ zones = [], setZones, status, activeCameraId, drawing: propDrawing, setDrawing: propSetDrawing, cameras = [] }) {
+  const [localDrawing, setLocalDrawing] = useState(false);
+  const drawing = propDrawing !== undefined ? propDrawing : localDrawing;
+  const setDrawing = propSetDrawing !== undefined ? propSetDrawing : setLocalDrawing;
   const wrapRef      = useRef(null);
   const canvasRef    = useRef(null);
   const [draftPts, setDraftPts]           = useState([]);
   const [mouse, setMouse]                 = useState(null);
   const [selectedZoneIdx, setSelectedZoneIdx] = useState(null);
   const [isLandscape, setIsLandscape]     = useState(window.matchMedia('(orientation: landscape)').matches);
-  const [showControls, setShowControls]   = useState(true);
   
   // Client Camera State
   const [useClientCamera, setUseClientCamera] = useState(false);
@@ -37,10 +39,11 @@ export default function ZoneCanvas({ zones = [], setZones, status, activeCameraI
           ctx.drawImage(v, 0, 0, c.width, c.height);
           const base64 = c.toDataURL('image/jpeg', 0.5);
           
+          const email = sessionStorage.getItem('operator_email') || '';
           fetch('/api/analyze_client_frame', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: base64 })
+            body: JSON.stringify({ image: base64, email })
           }).then(r => r.json()).then(data => {
             if (data.boxes) setClientBoxes(data.boxes);
           }).catch(() => {});
@@ -55,7 +58,6 @@ export default function ZoneCanvas({ zones = [], setZones, status, activeCameraI
     };
   }, [useClientCamera]);
 
-  // Track orientation changes
   useEffect(() => {
     const mq = window.matchMedia('(orientation: landscape)');
     const handler = (e) => setIsLandscape(e.matches);
@@ -75,10 +77,9 @@ export default function ZoneCanvas({ zones = [], setZones, status, activeCameraI
       if (px.length < 3) return;
       const isSelected = selectedZoneIdx === idx;
       const isBreached = zone.is_breached;
-      const isPending  = zone.is_pending;
-      let color = '#1ed670';
-      if (zone.type === 'danger')       color = isBreached ? '#f85149' : (isPending ? '#fbbf24' : '#f85149');
-      else if (zone.type === 'warning') color = '#fbbf24';
+      let color = '#10b981'; // var(--em)
+      if (zone.type === 'danger')       color = '#ef4444'; // var(--danger)
+      else if (zone.type === 'warning') color = '#f59e0b'; // var(--warning)
       if (isSelected) color = '#ffffff';
 
       ctx.beginPath();
@@ -96,11 +97,11 @@ export default function ZoneCanvas({ zones = [], setZones, status, activeCameraI
       const cx = px.reduce((s, p) => s + p.x, 0) / px.length;
       const cy = px.reduce((s, p) => s + p.y, 0) / px.length;
       const label = `${zone.type.toUpperCase()}_${idx + 1}`;
-      ctx.font = '900 10px "JetBrains Mono", monospace';
+      ctx.font = '900 10px "Inter", sans-serif';
       const tw = ctx.measureText(label).width;
       ctx.fillStyle = color;
       ctx.fillRect(cx - (tw / 2 + 6), cy - 10, tw + 12, 18);
-      ctx.fillStyle = (color === '#ffffff' || color === '#fbbf24' || color === '#1ed670') ? 'black' : 'white';
+      ctx.fillStyle = (color === '#ffffff' || color === '#f59e0b' || color === '#10b981') ? 'black' : 'white';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(label, cx, cy - 1);
@@ -112,10 +113,10 @@ export default function ZoneCanvas({ zones = [], setZones, status, activeCameraI
         const scaleX = W / v.videoWidth;
         const scaleY = H / v.videoHeight;
         clientBoxes.forEach(b => {
-          ctx.strokeStyle = '#1ed670';
+          ctx.strokeStyle = '#10b981';
           ctx.lineWidth = 3;
           ctx.strokeRect(b.x1 * scaleX, b.y1 * scaleY, (b.x2 - b.x1) * scaleX, (b.y2 - b.y1) * scaleY);
-          ctx.fillStyle = '#1ed670';
+          ctx.fillStyle = '#10b981';
           ctx.font = '10px monospace';
           ctx.fillText(`Person ${(b.conf*100).toFixed(0)}%`, b.x1 * scaleX, b.y1 * scaleY - 5);
         });
@@ -128,17 +129,17 @@ export default function ZoneCanvas({ zones = [], setZones, status, activeCameraI
       ctx.moveTo(px[0].x, px[0].y);
       px.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
       if (mouse && draftPts.length < 4) ctx.lineTo(mouse.x, mouse.y);
-      ctx.strokeStyle = '#1ed670';
+      ctx.strokeStyle = '#10b981';
       ctx.lineWidth = 2;
       ctx.setLineDash([5, 5]);
       ctx.stroke();
       ctx.setLineDash([]);
       px.forEach(p => {
         ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
-        ctx.fillStyle = '#1ed670'; ctx.fill();
+        ctx.fillStyle = '#10b981'; ctx.fill();
       });
     }
-  }, [zones, draftPts, mouse, selectedZoneIdx]);
+  }, [zones, draftPts, mouse, selectedZoneIdx, useClientCamera, clientBoxes]);
 
   useEffect(() => {
     const wrap = wrapRef.current;
@@ -165,7 +166,7 @@ export default function ZoneCanvas({ zones = [], setZones, status, activeCameraI
 
   const handleClearAll = async () => {
     if (!window.confirm('Clear all security zones?')) return;
-    try { await resetZones(); setZones([]); setSelectedZoneIdx(null); }
+    try { await resetZones(activeCameraId); setZones([]); setSelectedZoneIdx(null); }
     catch { alert('Failed to reset zones'); }
   };
 
@@ -177,13 +178,12 @@ export default function ZoneCanvas({ zones = [], setZones, status, activeCameraI
   };
 
   const handleCanvasInteract = (e) => {
-    // Prevent scroll when drawing on touch
     if (drawing && e.type === 'touchstart') e.preventDefault();
     const p = getPos(e);
     if (drawing) {
       const next = [...draftPts, toNorm(p, p.w, p.h)];
       if (next.length === 4) {
-        const name = window.prompt('Sector Identifier (e.g. Loading Dock 4):', `Sector ${zones.length + 1}`);
+        const name = window.prompt('Sector Identifier:', `Sector ${zones.length + 1}`);
         if (!name) { setDraftPts([]); setDrawing(false); return; }
         const newZone = { name, type: 'danger', points: next, dwell_time: 0.1 };
         const updated = [...zones, newZone];
@@ -207,7 +207,6 @@ export default function ZoneCanvas({ zones = [], setZones, status, activeCameraI
     }
   };
 
-  // In landscape on mobile, go fullscreen for drawing
   const isMobileLandscape = isLandscape && window.innerWidth < 1024;
 
   return (
@@ -221,125 +220,134 @@ export default function ZoneCanvas({ zones = [], setZones, status, activeCameraI
         onPointerMove={e => drawing && setMouse(getPos(e))}
         onPointerDown={handleCanvasInteract}
       >
-        {!useClientCamera ? (
-          <img
-            src="/api/video_feed"
-            alt="Live"
-            className="w-full h-full object-contain pointer-events-none select-none"
-            draggable={false}
-          />
-        ) : (
+        {!useClientCamera ? (() => {
+          const camStatus = cameras.find(c => c.id === activeCameraId)?.status || 'offline';
+          // eslint-disable-next-line react-hooks/rules-of-hooks
+          const streamUrl = useMemo(() => `/api/cameras/${activeCameraId}/stream?status=${camStatus}&t=${Date.now()}`, [activeCameraId, camStatus]);
+          return (
+            <img
+              key={`${activeCameraId}-${camStatus}`}
+              src={streamUrl}
+              alt="Live"
+              className="w-full h-full object-cover pointer-events-none select-none"
+              draggable={false}
+            />
+          );
+        })() : (
           <video
             ref={videoRef}
             autoPlay playsInline muted
-            className="w-full h-full object-contain pointer-events-none select-none"
+            className="w-full h-full object-cover pointer-events-none select-none"
           />
         )}
         <canvas ref={hiddenCanvasRef} className="hidden" />
         <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
 
-        {/* Drawing mode hint overlay */}
+        {/* Drawing hint */}
         {drawing && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-[#1e3a8a] text-black px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg pointer-events-none z-10">
-            TAP TO PLACE POINT — {draftPts.length}/4
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-[var(--em)] text-black px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-2xl z-10 animate-fadein">
+            NODE PLACEMENT: {draftPts.length} / 4
           </div>
-        )}
-
-        {/* Landscape close button */}
-        {isMobileLandscape && (
-          <button
-            onClick={() => setIsLandscape(false)}
-            className="absolute top-3 right-3 w-9 h-9 bg-black/60 border border-white/20 rounded-xl flex items-center justify-center text-white z-20"
-          >
-            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
         )}
       </div>
 
-      {/* ── Control Bar ─────────────────────────────────────────── */}
+      {/* ── Control Bar (Refined for 'neat' look) ─────────────────── */}
       <div className={`bg-[#0d1117] border-t border-white/5 shrink-0 transition-all duration-300
-        ${isMobileLandscape ? 'absolute bottom-0 left-0 right-0 bg-[#0d1117]/90 backdrop-blur-md border-t-0' : ''}`}>
+        ${isMobileLandscape ? 'absolute bottom-0 left-0 right-0 bg-[#0d1117]/90 backdrop-blur-md' : ''}`}>
 
-        {/* Mobile: high-tech touch buttons */}
-        <div className="flex md:hidden items-center gap-2 px-4 py-3">
-          <button
-            className={`flex-1 h-11 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95
-              ${drawing ? 'bg-amber-500 text-black shadow-amber-500/20' : 'bg-[var(--green)] text-black shadow-[var(--green)]/20'}`}
-            onClick={() => { setDrawing(!drawing); setDraftPts([]); setSelectedZoneIdx(null); }}
-          >
-            {drawing ? '✕ ABORT' : '+ NEW ZONE'}
-          </button>
-          <button
-            className={`flex-1 h-11 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95
-              ${selectedZoneIdx !== null ? 'border-[var(--color-red)] bg-[var(--color-red)]/10 text-[var(--color-red)] shadow-[var(--color-red)]/10' : 'border-white/5 text-[#484f58]'}`}
-            onClick={handleDeleteSelected}
-            disabled={selectedZoneIdx === null}
-          >
-            DELETE
-          </button>
-          <button
-            className="flex-1 h-11 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/5 text-[#8b949e] hover:bg-white/5 active:scale-95"
-            onClick={() => setUseClientCamera(!useClientCamera)}
-          >
-            {useClientCamera ? 'SERVER CAM' : 'MY WEBCAM'}
-          </button>
-        </div>
-
-        {/* Desktop: Industrial Control Strip */}
-        <div className="hidden md:flex items-center justify-between px-8 h-16">
-          <div className="flex items-center gap-4">
+        {/* Desktop: Premium Control Bar */}
+        <div className="hidden md:flex items-center justify-between px-6 h-20">
+          
+          <div className="flex items-center gap-2">
+            {/* Primary Action: Configure */}
             <button
-              className={`btn-action h-10 px-6 rounded-xl border transition-all
-                ${drawing ? 'bg-amber-500 border-amber-500 text-black font-black shadow-[0_0_20px_rgba(245,158,11,0.2)]' : 'border-[var(--green)]/30 text-[var(--green)] hover:bg-[var(--green)]/10'}`}
               onClick={() => { setDrawing(!drawing); setDraftPts([]); setSelectedZoneIdx(null); }}
+              className={`h-12 px-6 rounded-2xl flex items-center gap-3 transition-all duration-300 font-black uppercase tracking-widest text-[11px]
+                ${drawing 
+                  ? 'bg-amber-500 text-black shadow-[0_0_30px_rgba(245,158,11,0.3)]' 
+                  : 'bg-[var(--em)] text-black shadow-[0_0_30px_rgba(16,185,129,0.2)] hover:scale-105'}`}
             >
-              {drawing ? '✕ CANCEL DRAW' : '+ CONFIGURE ZONE'}
+              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="3">
+                {drawing ? <path d="M6 18L18 6M6 6l12 12" /> : <path d="M12 4v16m8-8H4" />}
+              </svg>
+              {drawing ? 'Abort Design' : 'Configure Zone'}
             </button>
-            <div className="w-[1px] h-6 bg-white/5 mx-2" />
-            <button
-              className={`btn-action h-10 px-6 rounded-xl border transition-all
-                ${selectedZoneIdx !== null ? 'border-white/40 text-white hover:bg-white/5' : 'border-white/5 text-[#484f58] pointer-events-none'}`}
-            >
-              MODIFY
-            </button>
-            <button
-              className={`btn-action h-10 px-6 rounded-xl border transition-all
-                ${selectedZoneIdx !== null ? 'border-[var(--color-red)] text-[var(--color-red)] bg-[var(--color-red)]/5 hover:bg-[var(--color-red)] hover:text-white' : 'border-white/5 text-[#484f58] pointer-events-none'}`}
-              onClick={handleDeleteSelected}
-              disabled={selectedZoneIdx === null}
-            >
-              DELETE SECTOR
-            </button>
-            <button
-              className="btn-action h-10 px-6 rounded-xl border border-white/10 text-[#8b949e] hover:border-[#f85149] hover:text-[#f85149] hover:bg-[#f85149]/5"
-              onClick={() => setUseClientCamera(!useClientCamera)}
-            >
-              {useClientCamera ? 'SWITCH TO SERVER CAM' : 'SWITCH TO MY WEBCAM'}
-            </button>
-            <button
-              className="btn-action h-10 px-6 rounded-xl border border-white/10 text-[#8b949e] hover:border-[#f85149] hover:text-[#f85149] hover:bg-[#f85149]/5"
-              onClick={handleClearAll}
-            >
-              PURGE ALL
-            </button>
+
+            <div className="w-[1px] h-8 bg-white/5 mx-2" />
+
+            {/* Context Actions: Selection Based */}
+            <div className="flex items-center gap-2">
+              <button
+                disabled={selectedZoneIdx === null}
+                onClick={handleDeleteSelected}
+                className={`h-12 px-5 rounded-2xl border flex items-center gap-3 transition-all duration-300 font-black uppercase tracking-widest text-[10px]
+                  ${selectedZoneIdx !== null 
+                    ? 'border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white' 
+                    : 'border-white/5 text-muted opacity-40 pointer-events-none'}`}
+              >
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                Delete Sector
+              </button>
+
+              <button
+                onClick={() => setUseClientCamera(!useClientCamera)}
+                className="h-12 px-5 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10 text-white/60 hover:text-white flex items-center gap-3 transition-all duration-300 font-black uppercase tracking-widest text-[10px] whitespace-nowrap"
+              >
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                {useClientCamera ? 'Station Feed' : 'Local Sensor'}
+              </button>
+
+              <button
+                onClick={handleClearAll}
+                className="h-12 px-5 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-red-500/10 hover:border-red-500/30 text-white/40 hover:text-red-500 flex items-center gap-3 transition-all duration-300 font-black uppercase tracking-widest text-[10px] whitespace-nowrap"
+              >
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                Purge All
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-6">
-            <div className="flex flex-col items-end gap-1">
-               <span className="text-[9px] font-black text-[#484f58] uppercase tracking-[0.3em]">Neural Status</span>
-               <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full animate-pulse ${drawing ? 'bg-amber-500' : 'bg-[var(--green)]'}`} />
-                  <span className={`text-[10px] font-black uppercase tracking-widest ${drawing ? 'text-amber-500' : 'text-[var(--green)]'}`}>
-                    {drawing ? `${draftPts.length}/4 NODES PLACED` : selectedZoneIdx !== null ? `SECTOR ${selectedZoneIdx + 1} ACTIVE` : 'STATION IDLE'}
+          {/* Right side: Status Indicators */}
+          <div className="flex items-center gap-6 pr-2">
+            <div className="flex flex-col items-end">
+               <span className="text-[9px] font-black text-muted uppercase tracking-[0.3em] opacity-40">Neural Analysis</span>
+               <div className="flex items-center gap-2.5 mt-1">
+                  <div className={`w-2 h-2 rounded-full animate-pulse ${drawing ? 'bg-amber-500' : 'bg-[var(--em)]'}`} />
+                  <span className={`text-[10px] font-black uppercase tracking-[0.15em] ${drawing ? 'text-amber-500' : 'text-white'}`}>
+                    {drawing ? `${draftPts.length} / 4 NODES` : selectedZoneIdx !== null ? `Sector ${selectedZoneIdx + 1} Selected` : 'Station Active'}
                   </span>
                </div>
             </div>
           </div>
+
         </div>
+
+        {/* Mobile View: High-Density Layout */}
+        <div className="md:hidden flex items-center gap-2 px-4 py-4">
+          <button
+            onClick={() => { setDrawing(!drawing); setDraftPts([]); setSelectedZoneIdx(null); }}
+            className={`flex-1 h-12 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl active:scale-95
+              ${drawing ? 'bg-amber-500 text-black' : 'bg-[var(--em)] text-black'}`}
+          >
+            {drawing ? '✕ ABORT' : '+ NEW ZONE'}
+          </button>
+          <button
+            disabled={selectedZoneIdx === null}
+            onClick={handleDeleteSelected}
+            className={`flex-1 h-12 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95
+              ${selectedZoneIdx !== null ? 'border-red-500/30 bg-red-500/10 text-red-500' : 'border-white/5 text-muted opacity-40'}`}
+          >
+            DELETE
+          </button>
+          <button
+            onClick={() => setUseClientCamera(!useClientCamera)}
+            className="w-12 h-12 rounded-2xl border border-white/5 bg-white/5 flex items-center justify-center text-white/60 active:scale-95"
+          >
+            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+          </button>
+        </div>
+
       </div>
     </div>
   );
 }
-

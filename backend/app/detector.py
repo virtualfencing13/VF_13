@@ -7,7 +7,7 @@ from typing import List, Dict, Tuple, Optional
 
 
 class Zone:
-    def __init__(self, name: str, points: List[Dict[str, float]], zone_type: str = "warning", dwell_time: float = 2.0):
+    def __init__(self, name: str, points: List[Dict[str, float]], zone_type: str = "warning", dwell_time: float = 0.0):
         self.name = name
         self.points = points # List of {x, y} in 0-1 range
         self.type = zone_type # Matched to frontend 'type'
@@ -26,23 +26,16 @@ class Zone:
 
     @property
     def is_cooldown(self) -> bool:
-        """Returns True if the zone is in its 15-second alert cooldown window."""
-        return (time.time() - self.last_alert_time) < 15
+        """Returns True if the zone is in its alert cooldown window (10s) to allow fast, repeated testing."""
+        return (time.time() - self.last_alert_time) < 10
 
 
 class IntrusionDetector:
-    def __init__(self, confidence: float = 0.5, alert_cooldown: int = 5):
-        # Prefer OpenVINO model if it exists (for Raspberry Pi speed)
-        model_path = "yolo11n.pt"
-        openvino_path = Path(__file__).resolve().parents[1] / "yolo11n_openvino_model"
-        
-        if openvino_path.exists():
-            model_path = str(openvino_path)
-            print(f"🚀 AI: Using Optimized OpenVINO Model for High-FPS")
+    def __init__(self, confidence: float = 0.5, alert_cooldown: int = 5, model = None):
+        if model is not None:
+            self.model = model
         else:
-            print(f"📦 AI: Using Standard PyTorch Model")
-
-        self.model = YOLO(model_path)
+            self.model = YOLO("yolo11n.onnx", task="detect")
         self.confidence = confidence
         self.alert_cooldown = alert_cooldown
         self.last_alert_time = 0
@@ -56,6 +49,9 @@ class IntrusionDetector:
         self.fps = 0
         self.last_annotated_frame = None
         self.intrusion_active = False
+        self.current_status = "safe"
+        self.intruder_count = 0
+
 
     @property
     def zones(self) -> List[Zone]:
@@ -64,8 +60,16 @@ class IntrusionDetector:
     def set_zones(self, zones_data: List[Dict], camera_id: str = None) -> List[Zone]:
         target_cam = camera_id or self.active_camera_id
         new_zones = []
+        
+        # If empty zones list is passed (Purge All), clear all configured camera keys to prevent key mismatches
+        if not zones_data:
+            self.zones_map.clear()
+            return []
+            
         for z in zones_data:
-            dwell = z.get("dwell_time") or z.get("dwellTime") or 2.0
+            dwell = z.get("dwell_time") or z.get("dwellTime")
+            if dwell is None:
+                dwell = 0.0
             z_type = z.get("type") or z.get("zone_type") or "warning"
             
             new_zones.append(Zone(
@@ -77,24 +81,39 @@ class IntrusionDetector:
         self.zones_map[target_cam] = new_zones
         return new_zones
 
-    def process(self, frame: np.ndarray) -> Tuple[np.ndarray, str, List[Dict]]:
+
+
+    def reset_state(self):
+        self.last_results = []
+        self.last_annotated_frame = None
+        self.inference_time = 0
+        self.fps = 0
+        self.intrusion_active = False
+
+
+    def process(self, frame: np.ndarray, skip_inference: bool = False) -> Tuple[np.ndarray, str, List[Dict]]:
         start_time = time.time()
         height, width = frame.shape[:2]
         
-        # 1. AI Inference
-        results_gen = self.model.predict(
-            frame, 
-            classes=[0], 
-            conf=self.confidence, 
-            verbose=False,
-            imgsz=416, 
-            stream=True 
-        )
-        results = next(results_gen)
-        
-        self.last_results = []
-        for box in results.boxes:
-            self.last_results.append((box.xyxy[0].tolist(), box.conf[0].item()))
+        # 1. AI Inference (only run if not skipped)
+        if not skip_inference:
+            start_inference = time.time()
+            results_gen = self.model.predict(
+                frame, 
+                classes=[0], 
+                conf=self.confidence, 
+                verbose=False,
+                imgsz=320, 
+                stream=True 
+            )
+            results = next(results_gen)
+            
+            self.last_results = []
+            for box in results.boxes:
+                self.last_results.append((box.xyxy[0].tolist(), box.conf[0].item()))
+            
+            self.inference_time = (time.time() - start_inference) * 1000
+            self.fps = 1.0 / (time.time() - start_time) if (time.time() - start_time) > 0 else 0
         
         # 2. Logic Prep
         now = time.time()
@@ -166,10 +185,9 @@ class IntrusionDetector:
             cv2.rectangle(frame, (int(x1), int(y1) - th - 12), (int(x1) + tw + 10, int(y1)), color, -1)
             text_color = (255, 255, 255) if is_inside_danger else (0, 0, 0)
             cv2.putText(frame, label_text, (int(x1) + 5, int(y1) - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.45, text_color, 2, cv2.LINE_AA)
-
-        self.inference_time = (time.time() - start_time) * 1000
-        self.fps = 1.0 / (time.time() - start_time) if (time.time() - start_time) > 0 else 0
         
+        self.current_status = current_status
+        self.intruder_count = intruder_count
         return frame, current_status, alerts_to_trigger, intruder_count
 
     def save_snapshot(self, frame: np.ndarray, storage_dir: Path) -> Path:

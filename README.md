@@ -1,70 +1,93 @@
-# FenceAI: Simple & Smart Virtual Fencing
+# Virtual Fencing System (FENCEAI)
 
-FenceAI is a smart security system that uses Artificial Intelligence (AI) to watch your property. It detects people entering "restricted zones" and sends alerts to your phone or email.
-
-## 🚀 How it Works
-1. **Watch**: The system connects to your camera.
-2. **Draw**: You draw "Danger Zones" on the screen.
-3. **Alert**: If a person stays in a zone for too long, the system sends an alert.
+This is an AI-powered safety system. It uses a camera to check if people enter dangerous areas (intrusion zones). If someone enters a zone, it can:
+* Stop a motor (safety relay).
+* Turn on a buzzer alarm.
+* Send warnings via Email, Telegram, WhatsApp, or phone calls (Twilio).
 
 ---
 
-## 🛠️ How to Setup (Local Computer)
+## 🛠️ Requirements
+* **Python 3.12+** (for the Backend API)
+* **Node.js 18+** (for the Web Dashboard)
+* **Docker & Docker Compose** (Optional, to run everything easily)
 
-### 1. Backend (The AI Engine)
+---
+
+## ⚙️ Configuration (.env)
+
+Before running the project, create a file named `.env` inside the `backend/` folder. Copy and paste the text below, and replace the values with your own settings:
+
+```env
+# Camera & AI Settings
+CAMERA_SOURCE=0               # 0 for webcam, or use RTSP stream link
+CONFIDENCE_THRESHOLD=0.45     # AI confidence (between 0.0 and 1.0)
+ALERT_COOLDOWN_SECONDS=10     # Seconds to wait before sending another alert
+
+# SMTP Email Settings (To send email alerts)
+EMAIL_ENABLED=true
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SENDER_EMAIL=your_email@gmail.com
+SENDER_PASSWORD=your_app_password
+RECIPIENT_EMAIL=operator@facility.com
+
+# Twilio Settings (To send SMS & Voice Call alerts)
+TWILIO_ACCOUNT_SID=your_sid
+TWILIO_AUTH_TOKEN=your_token
+TWILIO_FROM_PHONE=your_twilio_number
+TWILIO_TO_PHONE=your_mobile_number
+
+# Public URL (Where the backend is hosted)
+PUBLIC_BASE_URL=http://localhost:8000
+```
+
+---
+
+## 🚀 How to Run the Project
+
+### Method 1: Using Docker (easiest way)
+If you have Docker installed, open your terminal in the root folder and run:
+```bash
+docker-compose up --build
+```
+* **Web Dashboard**: Open `http://localhost` in your browser.
+* **Backend API**: Running at `http://localhost:8000`.
+
+---
+
+### Method 2: Running Manually (without Docker)
+
+#### **1. Start the Backend API**
+Open a new terminal window, go to the `backend/` folder, and run:
 ```bash
 cd backend
 python -m venv .venv
-# On Windows: .venv\Scripts\activate
-# On Mac/Linux: source .venv/bin/activate
+source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
 pip install -r requirements.txt
 python -m uvicorn app.main:app --reload
 ```
+The backend will run on `http://localhost:8000`.
 
-### 2. Frontend (The User Interface)
+#### **2. Start the Frontend Dashboard**
+Open a second terminal window, go to the `frontend/` folder, and run:
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
+The dashboard will run on `http://localhost:5173`. Open this URL in your web browser.
 
 ---
 
-## 🌐 How to Make it "Live" (Online)
-
-To make your website work anywhere in the world, you have two options:
-
-### Option A: The "Quick Link" (Recommended for Testing)
-Use a tool like **ngrok** to create a public link to your local computer.
-1. Download ngrok.
-2. Run: `ngrok http 8000` (for backend) and `ngrok http 5173` (for frontend).
-3. Copy the links and share them!
-
-### Option B: Cloud Hosting (Professional)
-1. **Frontend**: Upload the `frontend` folder to **Vercel** or **Netlify**.
-2. **Backend**: Host the `backend` folder on a **VPS** (like DigitalOcean or AWS) that has Python installed.
-3. **Connect**: Update the `PUBLIC_BASE_URL` in your `.env` to point to your backend link.
+## 🔒 Login Credentials
+* **Default Username**: `admin@gmail.com`
+* **Default Password**: `admin123`
+*(Make sure to change the password in the Settings page after logging in).*
 
 ---
 
-## 🍓 Future Upgrade: Raspberry Pi + Buzzer
-You can run this entire system on a Raspberry Pi to create a physical alarm.
-
-### 🔌 Connections:
-*   **Buzzer (+)**: Connect to **GPIO 17**.
-*   **Buzzer (-)**: Connect to **GND**.
-
-### 💻 Code Logic:
-When the AI detects a person, it sends a signal to the Pi's pins:
-```python
-from gpiozero import Buzzer
-alarm = Buzzer(17)
-
-if person_detected:
-    alarm.on()
-else:
-    alarm.off()
-```
-
----
-**Created by**: [Your Name/ID] | **Version**: 1.0.0
+## 🔌 Hardware Setup (Optional)
+If you are using a **Raspberry Pi 5** or **ESP32** microcontroller, please read these files for wiring maps:
+* [Pin Connections Guide](file:///home/virtualfencing/Documents/virtual_fencing/pin_connections.md) - For wiring the Pi 5 to the buzzer and motor relay.
+* [ESP32 Setup Guide](file:///home/virtualfencing/Documents/virtual_fencing/esp32_distributed_pins.md) - For wireless motor control using ESP32 nodes.

@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react';
 import AlertsPanel from '../components/AlertsPanel';
 import { getAlerts, clearAlerts, deleteAlerts, acknowledgeAlert } from '../services/api';
 
-export default function AlertsPage() {
-  const [alerts, setAlerts] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function AlertsPage({ alerts = [], setAlerts }) {
+  const [loading, setLoading] = useState(alerts.length === 0);
   const [selectedIds, setSelectedIds] = useState([]);
   const [investigatingAlert, setInvestigatingAlert] = useState(null);
 
@@ -20,9 +19,11 @@ export default function AlertsPage() {
   };
 
   useEffect(() => {
-    fetchAlerts();
-    const id = setInterval(fetchAlerts, 5000);
-    return () => clearInterval(id);
+    if (alerts.length === 0) {
+      fetchAlerts();
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const handleToggleSelect = (id) => {
@@ -99,25 +100,25 @@ export default function AlertsPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-screen-2xl mx-auto flex flex-col gap-6 md:gap-10 animate-fadein relative font-['Rajdhani']">
+    <div className="p-4 md:p-10 max-w-screen-2xl mx-auto flex flex-col gap-8 md:gap-12 animate-fadein relative font-['Inter']">
       
       {/* Detail Modal Overlay */}
       {investigatingAlert && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 backdrop-blur-xl bg-black/80">
-           <div className="bg-[#0d1117] border border-white/10 rounded-3xl w-full max-w-4xl max-h-full flex flex-col overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)]">
-              <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/2">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 backdrop-blur-3xl bg-black/90">
+           <div className="glass-card w-full max-w-4xl max-h-full flex flex-col overflow-hidden shadow-3xl" style={{borderColor:'var(--border)'}}>
+              <div className="p-6 flex items-center justify-between" style={{background:'rgba(255,255,255,0.02)', borderBottom:'1px solid var(--border)'}}>
                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-[var(--green)]/10 rounded-xl flex items-center justify-center text-[var(--green)] border border-[var(--green)]/20 shadow-[0_0_15px_rgba(0,255,65,0.1)]">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[var(--em)] border shadow-[0_0_15px_rgba(16,185,129,0.1)]" style={{background:'var(--em-glow)', borderColor:'var(--border-em)'}}>
                        <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </div>
                     <div className="flex flex-col">
-                       <span className="text-[12px] font-black text-white uppercase tracking-widest font-[var(--font-display)]">Forensic Investigation</span>
-                       <span className="text-[10px] text-[var(--green)] font-bold uppercase tracking-widest font-[var(--font-mono)]">Incident ID: {investigatingAlert.id}</span>
+                       <span className="text-[12px] font-black text-white uppercase tracking-[0.2em]">Forensic Investigation</span>
+                       <span className="text-[10px] font-bold uppercase tracking-[0.1em]" style={{color:'var(--em)'}}>Incident ID: {investigatingAlert.id}</span>
                     </div>
                  </div>
                  <button 
                    onClick={() => setInvestigatingAlert(null)}
-                   className="w-10 h-10 rounded-xl hover:bg-white/5 flex items-center justify-center text-[#484f58] hover:text-white transition-colors"
+                   className="w-10 h-10 rounded-xl hover:bg-white/5 flex items-center justify-center text-muted hover:text-white transition-all"
                  >
                     <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 18L18 6M6 6l12 12" /></svg>
                  </button>
@@ -125,23 +126,24 @@ export default function AlertsPage() {
               
               <div className="flex-1 overflow-y-auto p-6 md:p-8 grid grid-cols-1 lg:grid-cols-2 gap-8 custom-scrollbar">
                   <div className="space-y-6">
-                    <div className="aspect-video bg-black rounded-2xl border border-white/10 overflow-hidden shadow-2xl group/img relative">
+                    <div className="aspect-video bg-black rounded-2xl border border-white/10 overflow-hidden shadow-2xl group relative">
                        <img 
-                         src={investigatingAlert.snapshot_url?.startsWith('http') ? investigatingAlert.snapshot_url : `http://${window.location.hostname}:8000${investigatingAlert.snapshot_url}`}
+                         src={investigatingAlert.snapshot_url}
                          alt="Forensic Snapshot"
-                         className="w-full h-full object-cover transition-transform duration-700 group-hover/img:scale-105"
+                         className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                        />
-                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover/img:opacity-100 transition-opacity flex items-end p-6">
-                          <span className="text-[10px] font-black text-white uppercase tracking-widest font-[var(--font-mono)]">Forensic Asset: {investigatingAlert.id}.jpg</span>
+                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
+                          <span className="text-[10px] font-black text-white uppercase tracking-widest font-mono">Forensic Asset Captured</span>
                        </div>
                     </div>
                     <div className="flex items-center gap-4">
                        <button 
-                         className="flex-1 bg-[var(--green)] hover:bg-[#2eff88] text-black h-14 rounded-xl font-black text-[12px] uppercase tracking-widest transition-all shadow-lg shadow-[var(--green)]/20 disabled:opacity-50 font-[var(--font-display)]"
+                         className="btn-em flex-1 h-14 rounded-2xl"
                          onClick={() => handleAcknowledge(investigatingAlert.id)}
                          disabled={investigatingAlert.acknowledged}
+                         style={{opacity: investigatingAlert.acknowledged ? 0.5 : 1}}
                        >
-                         {investigatingAlert.acknowledged ? 'Incident Logged & Verified' : 'Acknowledge Forensic Hit'}
+                         {investigatingAlert.acknowledged ? 'Incident Verified' : 'Acknowledge Forensic Hit'}
                        </button>
                     </div>
                  </div>
@@ -162,7 +164,7 @@ export default function AlertsPage() {
                     </div>
                     <div className="bg-white/2 border border-white/5 p-6 rounded-2xl flex-1">
                        <span className="text-[10px] font-bold text-[#484f58] uppercase block mb-4 tracking-widest font-[var(--font-mono)]">Incident Intelligence</span>
-                       <p className="text-[14px] font-medium text-white/80 leading-relaxed italic font-['Rajdhani']">
+                       <p className="text-[14px] font-medium text-white/80 leading-relaxed italic font-['Inter']">
                          "Neural Core identified a 'person' entity within the restricted perimeter. Security protocols triggered. Data stream synchronized with Oasis Cloud for long-term forensic persistence."
                        </p>
                     </div>
@@ -175,16 +177,16 @@ export default function AlertsPage() {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8">
         <div>
-          <h1 className="text-3xl font-black text-white uppercase tracking-tighter font-[var(--font-display)]">Security Incident Archive</h1>
-          <p className="text-[12px] font-bold text-[var(--green)] uppercase tracking-[0.4em] mt-2 opacity-80 font-[var(--font-mono)]">
-            Node: History-Store · {alerts.length} Records Detected
+          <h1 className="text-4xl font-black text-white uppercase tracking-tight">Incident Archive</h1>
+          <p className="text-[11px] font-bold uppercase tracking-[0.3em] mt-2 opacity-50" style={{color:'var(--em)'}}>
+            System Archive · {alerts.length} Forensic Records
           </p>
         </div>
 
-        <div className="flex items-center flex-wrap gap-3">
+        <div className="flex items-center flex-wrap gap-4">
           {selectedIds.length > 0 && (
             <button 
-              className="bg-[var(--color-red)]/10 border border-[var(--color-red)]/50 text-[var(--color-red)] h-11 px-6 rounded-xl flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest hover:bg-[var(--color-red)] hover:text-white transition-all font-[var(--font-mono)]"
+              className="bg-[var(--danger-bg)] border border-[var(--danger)] text-[var(--danger)] h-11 px-6 rounded-xl flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest hover:bg-[var(--danger)] hover:text-black transition-all"
               onClick={handleDeleteSelected}
             >
               <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -195,58 +197,61 @@ export default function AlertsPage() {
           )}
 
           <button 
-            className="btn-outline h-11 px-6 rounded-xl flex items-center gap-2 text-[11px] font-black uppercase tracking-widest font-[var(--font-mono)] border border-white/10 hover:bg-white/5"
+            className="btn-ghost h-11 px-6 rounded-xl flex items-center gap-2 text-[11px] font-black uppercase tracking-widest border border-white/5"
             onClick={handleExportCSV}
             disabled={alerts.length === 0}
           >
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Export CSV
+            Export Archive
           </button>
 
           <button 
-            className="btn-secondary h-11 px-8 rounded-xl flex items-center gap-2 text-[11px] font-black uppercase tracking-widest font-[var(--font-mono)] bg-white/5 hover:bg-white/10 transition-colors"
+            className="btn-ghost h-11 px-8 rounded-xl flex items-center gap-2 text-[11px] font-black uppercase tracking-widest border border-white/5"
             onClick={fetchAlerts}
             disabled={loading}
           >
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
             </svg>
-            Refresh
+            Sync
           </button>
           
           <button 
-            className="btn-danger h-11 px-8 rounded-xl flex items-center gap-2 text-[11px] font-black uppercase tracking-widest font-[var(--font-mono)] bg-[var(--color-red)]/10 text-[var(--color-red)] border border-[var(--color-red)]/20 hover:bg-[var(--color-red)] hover:text-white transition-all"
+            className="h-11 px-8 rounded-xl flex items-center gap-2 text-[11px] font-black uppercase tracking-widest transition-all bg-[var(--danger-bg)] text-[var(--danger)] border border-[var(--danger)] hover:bg-[var(--danger)] hover:text-black"
             onClick={handleClearAll}
             disabled={alerts.length === 0}
           >
-            Clear Archive
+            Wipe Logs
           </button>
         </div>
       </div>
 
       {/* Archive Main Panel */}
-      <div className="industrial-card flex flex-col min-h-[600px] overflow-hidden">
-         <div className="px-8 py-5 border-b border-blue-100 bg-white/2 flex items-center justify-between">
+      <div className="glass-card flex flex-col min-h-[600px] overflow-hidden" style={{border:'1px solid var(--border)'}}>
+         <div className="px-8 py-5 border-b flex items-center justify-between" style={{background:'rgba(255,255,255,0.02)', borderColor:'var(--border)'}}>
             <div className="flex items-center gap-6">
-               <span className="text-[11px] font-black text-[#1e3a8a] uppercase tracking-widest">Digital Audit Trail</span>
+               <span className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Enterprise Audit Log</span>
                <button 
                  onClick={handleSelectAll}
-                 className="text-[10px] font-bold text-slate-500 hover:text-white uppercase tracking-widest transition-colors"
+                 className="text-[10px] font-bold uppercase tracking-widest transition-colors"
+                 style={{color:'var(--text-muted)'}}
+                 onMouseEnter={e => e.currentTarget.style.color='var(--em)'}
+                 onMouseLeave={e => e.currentTarget.style.color='var(--text-muted)'}
                >
-                 {selectedIds.length === alerts.length ? 'Deselect All' : 'Select All'}
+                 {selectedIds.length === alerts.length ? 'Deselect All' : 'Batch Select'}
                </button>
             </div>
             <div className="flex items-center gap-2">
-               <div className="w-1.5 h-1.5 rounded-full bg-[#1ed670] animate-pulse" />
-               <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Real-time Sync Active</span>
+               <div className="w-1.5 h-1.5 rounded-full blink" style={{background:'var(--em)'}} />
+               <span className="text-[10px] font-bold uppercase tracking-widest opacity-50">Real-time Persistence Active</span>
             </div>
          </div>
          <div className="p-8 flex-1 overflow-y-auto custom-scrollbar">
             {loading && alerts.length === 0 ? (
-              <div className="py-20 text-center text-slate-400 font-mono animate-pulse uppercase tracking-widest">
-                Synchronizing with Secure Archive...
+              <div className="py-20 text-center text-muted font-mono animate-pulse uppercase tracking-widest">
+                Synchronizing Secure Vault...
               </div>
             ) : (
               <AlertsPanel 
