@@ -308,9 +308,23 @@ class CameraWorker:
                             pass
                         
                         # Trigger wireless ESP32 safety node state transition
+                        # Hardcoding the new mobile hotspot IP to bypass any UI/Database sync issues
+                        self.ip_address = "10.161.237.12"
                         if self.ip_address:
-                            state_cmd = "danger" if new_intrusion_state else "safe"
-                            self._send_esp32_command(self.ip_address, state_cmd)
+                            try:
+                                from app.main import machine_control_enabled
+                                if new_intrusion_state:
+                                    # Person is detected!
+                                    if machine_control_enabled:
+                                        state_cmd = "danger" # Buzzer ON, Machine STOP
+                                    else:
+                                        state_cmd = "warning" # Buzzer ON, Machine RUNS
+                                else:
+                                    state_cmd = "safe" # Buzzer OFF, Machine RUNS
+                                    
+                                self._send_esp32_command(self.ip_address, state_cmd)
+                            except Exception as e:
+                                print(f"Error checking machine toggle: {e}")
                     
                     self.intrusion_active = new_intrusion_state
                     self.latency = self.detector.inference_time

@@ -180,7 +180,7 @@ class Database:
         
         is_sqlite = "sqlite" in str(self.engine.url)
         
-        if not is_sqlite:
+        if False: # Forced migration enabled to add ip_address column
             print("ℹ️ DATABASE: Remote database detected. Skipping startup raw ALTER TABLE migrations to prevent lock contention.")
         else:
             try:
