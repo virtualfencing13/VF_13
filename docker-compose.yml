@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: fenceai-backend
+    restart: always
+    privileged: true # Required for GPIO access on Raspberry Pi 5
+    devices:
+      - "/dev/video0:/dev/video0" # Camera access
+      - "/dev/gpiomem:/dev/gpiomem" # GPIO access
+    volumes:
+      - ./backend/storage/snapshots:/app/storage/snapshots
+      - ./backend/fenceai_local.db:/app/fenceai_local.db
+    env_file:
+      - ./backend/.env
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    container_name: fenceai-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend

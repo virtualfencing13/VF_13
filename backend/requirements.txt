@@ -1,0 +1,19 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+fastapi==0.115.8
+uvicorn[standard]==0.34.0
+opencv-python==4.11.0.86
+numpy>=2.1.1
+torch>=2.5.0
+torchvision>=0.20.0
+ultralytics>=8.3.80
+twilio==9.4.4
+python-dotenv==1.0.1
+python-multipart==0.0.20
+requests==2.32.3
+sqlalchemy==2.0.31
+httpx==0.27.0
+pg8000==1.31.5
+gpiozero==2.0.1
+pyjwt==2.10.1
+google-auth==2.38.0
+rpi-lgpio

@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+backend/.venv/
+backend/storage/snapshots/
+frontend/node_modules/
+frontend/dist/
+backend/snapshots/
+*.db
+*.deb
+*.pt
+*.onnx
+.lgd-nfy0
+.DS_Store
